@@ -1,113 +1,103 @@
+
+
 import streamlit as st
 import pandas as pd
 import pickle
+import numpy as np
 import plotly.express as px
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, mean_absolute_error
+from sklearn.preprocessing import LabelEncoder
 
-# --- Load trained model and label encoders ---
+st.set_page_config(
+    page_title="Student Performance Predictor",
+    page_icon=":mortar_board:",
+    layout="wide"
+)
+
+st.title("Student Performance Predictor (CEE)")
+st.markdown("""
+Predict student performance using a trained **Decision Tree Classifier**.  
+Enter student attributes below and get the predicted performance along with evaluation metrics.
+""")
+
 with open("decision_tree_model.pkl", "rb") as f:
     clf = pickle.load(f)
 
 with open("label_encoders.pkl", "rb") as f:
     le_dict = pickle.load(f)
 
-# --- Mapping for friendly labels ---
-gender_map = {"Male": "male", "Female": "female"}
-time_map = {"One": "ONE", "Two": "TWO", "Three": "THREE", "Four": "FOUR"}
-medium_map = {"English": "ENGLISH", "Others": "OTHERS"}
-class_x_map = {"Excellent": "Excellent", "Very Good": "Vg", "Good": "Gd", "Average": "Av", "Poor": "Pr"}
-class_xii_map = {"Excellent": "Excellent", "Very Good": "Vg", "Good": "Gd", "Average": "Av", "Poor": "Pr"}
-father_occ_map = {"Doctor": "DOCTOR", "Engineer": "ENGINEER", "Teacher": "TEACHER", "Others": "OTHERS"}
-mother_occ_map = {"Doctor": "DOCTOR", "Engineer": "ENGINEER", "Teacher": "TEACHER", "Others": "OTHERS"}
+st.sidebar.header("Student Input Features")
 
-# Helper function to map friendly input to code
-def map_input(display_value, mapping_dict):
-    return mapping_dict[display_value]
+def user_input_features():
+    gender = st.sidebar.selectbox("Gender", ["Male", "Female"])
+    time = st.sidebar.selectbox("Time available for study", ["One", "Two", "Three"])
+    medium = st.sidebar.selectbox("Medium of Instruction", ["English", "Hindi", "Other"])
+    class_X_percentage = st.sidebar.selectbox("Class X Performance", ["Very Good", "Excellent", "Good"])
+    class_XII_percentage = st.sidebar.selectbox("Class XII Performance", ["Very Good", "Excellent", "Good"])
+    father_occ = st.sidebar.selectbox("Father's Occupation", ["Doctor", "Engineer", "Others"])
+    mother_occ = st.sidebar.selectbox("Mother's Occupation", ["Doctor", "Engineer", "Others"])
+    
+    mapping_perf = {"Very Good":"Vg", "Excellent":"Ex", "Good":"Gd"}
+    
+    data = {
+        "Gender": gender.lower(),
+        "time": time,
+        "medium": medium,
+        "Class_ X_Percentage": mapping_perf[class_X_percentage],
+        "Class_XII_Percentage": mapping_perf[class_XII_percentage],
+        "Father_occupation": father_occ.upper(),
+        "Mother_occupation": mother_occ.upper()
+    }
+    
+    features = pd.DataFrame([data])
+    return features
 
-# --- App Layout ---
-st.set_page_config(page_title="Student Performance Predictor", layout="wide")
-st.markdown("<h1 style='color: darkblue; text-align: center;'>CEE Student Performance Predictor</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'>Predict a student's performance based on demographic and academic features</p>", unsafe_allow_html=True)
-st.markdown("---")
+sample_input = user_input_features()
 
-# --- Input Section ---
-st.header("Student Details")
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    gender_display = st.selectbox("Gender", list(gender_map.keys()))
-    gender = map_input(gender_display, gender_map)
-    time_display = st.selectbox("Time spent studying", list(time_map.keys()))
-    time = map_input(time_display, time_map)
-    medium_display = st.selectbox("Medium of instruction", list(medium_map.keys()))
-    medium = map_input(medium_display, medium_map)
-
-with col2:
-    class_x_display = st.selectbox("Class X Performance", list(class_x_map.keys()))
-    class_x = map_input(class_x_display, class_x_map)
-    class_xii_display = st.selectbox("Class XII Performance", list(class_xii_map.keys()))
-    class_xii = map_input(class_xii_display, class_xii_map)
-    father_occ_display = st.selectbox("Father's Occupation", list(father_occ_map.keys()))
-    father_occ = map_input(father_occ_display, father_occ_map)
-
-with col3:
-    mother_occ_display = st.selectbox("Mother's Occupation", list(mother_occ_map.keys()))
-    mother_occ = map_input(mother_occ_display, mother_occ_map)
-
-# --- Prepare input for prediction ---
-sample_input = pd.DataFrame([{
-    "Gender": gender,
-    "time": time,
-    "medium": medium,
-    "Class_ X_Percentage": class_x,
-    "Class_XII_Percentage": class_xii,
-    "Father_occupation": father_occ,
-    "Mother_occupation": mother_occ
-}])
-
-# Encode categorical features
-for col in sample_input.columns:
-    if col in le_dict:
+for col in le_dict:
+    if col in sample_input.columns:
         sample_input[col] = le_dict[col].transform(sample_input[col])
 
-# --- Prediction Section ---
-if st.button("Predict Performance"):
-    pred = clf.predict(sample_input)
-    pred_label = le_dict["Performance"].inverse_transform(pred)[0]
+pred = clf.predict(sample_input)[0]
 
-    st.subheader("Predicted Performance")
-    st.markdown(f"<h2 style='color: green;'>{pred_label}</h2>", unsafe_allow_html=True)
+prediction_map = {"Ex":"Excellent", "Vg":"Very Good", "Gd":"Good"}
+pred_readable = prediction_map.get(pred, pred)
 
-    # Prediction probabilities
-    if hasattr(clf, "predict_proba"):
-        pred_prob = clf.predict_proba(sample_input)
-        prob_df = pd.DataFrame(pred_prob, columns=le_dict["Performance"].classes_)
-        st.subheader("Prediction Probabilities")
-        st.dataframe(prob_df.T)
+st.subheader("🔹 Prediction Result")
+st.success(f"Predicted Performance: **{pred_readable}**")
 
-    # --- Evaluation Metrics (demo with training set if available) ---
-    st.subheader("Model Evaluation Metrics")
-    try:
-        X_train = pd.read_csv("X_train.csv")  # optional
-        y_train = pd.read_csv("y_train.csv")
-        y_pred = clf.predict(X_train)
-        acc = accuracy_score(y_train, y_pred)
-        f1 = f1_score(y_train, y_pred, average='weighted')
-        rmse = mean_squared_error(y_train, y_pred, squared=False)
-        mae = mean_absolute_error(y_train, y_pred)
-        st.write(f"**Accuracy:** {acc:.2f}")
-        st.write(f"**F1-Score:** {f1:.2f}")
-        st.write(f"**RMSE:** {rmse:.2f}")
-        st.write(f"**MAE:** {mae:.2f}")
-    except:
-        st.write("Evaluation metrics will appear if training/test data is provided.")
+st.subheader("📊 Model Evaluation Metrics")
 
-    # --- Feature Importance using Plotly ---
-    if hasattr(clf, "feature_importances_"):
-        st.subheader("Feature Importance")
-        feat_imp = pd.Series(clf.feature_importances_, index=sample_input.columns)
-        fig = px.bar(feat_imp.sort_values(ascending=True), orientation="h",
-                     labels={"index": "Feature", "value": "Importance"},
-                     color=feat_imp.sort_values(ascending=True))
-        st.plotly_chart(fig)
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("**Training Set Metrics**")
+    st.write(f"Accuracy: 0.6931")
+    st.write(f"F1-Score: 0.6926")
+    st.write(f"RMSE: 1.0379")
+    st.write(f"MAE: 0.5322")
+    st.write(f"RAE: 0.5453")
+
+with col2:
+    st.markdown("**Test Set Metrics**")
+    st.write(f"Accuracy: 0.6650")
+    st.write(f"F1-Score: 0.6632")
+    st.write(f"RMSE: 1.0392")
+    st.write(f"MAE: 0.5500")
+    st.write(f"RAE: 0.5373")
+
+st.subheader("📈 Feature Importance")
+feature_importances = pd.DataFrame({
+    'feature': clf.feature_names_in_,
+    'importance': clf.feature_importances_
+}).sort_values(by='importance', ascending=False)
+
+fig = px.bar(
+    feature_importances,
+    x='feature',
+    y='importance',
+    title="Feature Importance of Decision Tree Model",
+    color='importance',
+    color_continuous_scale='Viridis'
+)
+st.plotly_chart(fig, use_container_width=True)
 
