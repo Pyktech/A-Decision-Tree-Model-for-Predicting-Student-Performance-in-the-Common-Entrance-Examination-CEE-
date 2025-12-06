@@ -1,11 +1,8 @@
-
-
 import streamlit as st
 import pandas as pd
 import pickle
 import numpy as np
 import plotly.express as px
-from sklearn.preprocessing import LabelEncoder
 
 st.set_page_config(
     page_title="Student Performance Predictor",
@@ -13,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("Student Performance Predictor (CEE)")
+st.title("🎓 Student Performance Predictor (CEE)")
 st.markdown("""
 Predict student performance using a trained **Decision Tree Classifier**.  
 Enter student attributes below and get the predicted performance along with evaluation metrics.
@@ -48,17 +45,23 @@ def user_input_features():
         "Mother_occupation": mother_occ.upper()
     }
     
-    features = pd.DataFrame([data])
-    return features
+    return pd.DataFrame([data])
 
 sample_input = user_input_features()
 
+def safe_transform(col, encoder, df):
+    val = df[col].iloc[0]
+    if val in encoder.classes_:
+        df[col] = encoder.transform([val])
+    else:
+        df[col] = encoder.transform([encoder.classes_[0]])
+    return df
+
 for col in le_dict:
     if col in sample_input.columns:
-        sample_input[col] = le_dict[col].transform(sample_input[col])
+        sample_input = safe_transform(col, le_dict[col], sample_input)
 
 pred = clf.predict(sample_input)[0]
-
 prediction_map = {"Ex":"Excellent", "Vg":"Very Good", "Gd":"Good"}
 pred_readable = prediction_map.get(pred, pred)
 
@@ -100,4 +103,3 @@ fig = px.bar(
     color_continuous_scale='Viridis'
 )
 st.plotly_chart(fig, use_container_width=True)
-
