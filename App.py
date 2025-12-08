@@ -6,13 +6,11 @@ import plotly.express as px
 import base64
 import os
 
-# Function to convert image to base64
 def get_base64_of_bin_file(bin_file):
     with open(bin_file, 'rb') as f:
         data = f.read()
     return base64.b64encode(data).decode()
 
-# Function to set background image
 def set_bg_image(image_file):
     if os.path.exists(image_file):
         bin_str = get_base64_of_bin_file(image_file)
@@ -30,7 +28,6 @@ def set_bg_image(image_file):
         st.markdown(page_bg_img, unsafe_allow_html=True)
         return True
     else:
-        # Fallback to gradient background if image not found
         page_bg_img = '''
         <style>
         .stApp {
@@ -41,7 +38,6 @@ def set_bg_image(image_file):
         st.markdown(page_bg_img, unsafe_allow_html=True)
         return False
 
-# Enhanced page configuration with custom theme
 st.set_page_config(
     page_title="Student Performance Predictor",
     page_icon="🎓",
@@ -49,7 +45,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for enhanced UI with professional design
 st.markdown("""
 <style>
     .main-header {
@@ -239,14 +234,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Set the background image
 bg_image_path = "coolbackgrounds-particles-stellar.png"
 if os.path.exists(bg_image_path):
     set_bg_image(bg_image_path)
 else:
     st.warning(f"Background image '{bg_image_path}' not found. Using default gradient.")
 
-# Enhanced header with gradient background
 st.markdown("""
 <div class="main-header">
     <h1>Student Performance Predictor (CEE)</h1>
@@ -261,7 +254,6 @@ with open("decision_tree_model.pkl", "rb") as f:
 with open("label_encoders.pkl", "rb") as f:
     le_dict = pickle.load(f)
 
-# Enhanced sidebar with better organization
 st.sidebar.markdown("""
 <div style="background: rgba(0, 10, 30, 0.9); padding: 1.2rem; border-radius: 15px; color: white; text-align: center; backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1);">
     <h3 class="icon-title">Student Input Features</h3>
@@ -311,14 +303,13 @@ def safe_transform(col, encoder, df):
         df[col] = encoder.transform([encoder.classes_[0]])
     return df
 
-# Enhanced predict button
 predict_button = st.sidebar.button("Predict Performance", use_container_width=True)
 
 if predict_button:
-    # Show loading spinner
+
     with st.spinner('Analyzing student data...'):
         import time
-        time.sleep(1)  # Simulate processing time
+        time.sleep(1)
         
         for col in le_dict:
             if col in sample_input.columns:
@@ -331,7 +322,6 @@ if predict_button:
         prediction_map = {"Ex":"Excellent", "Vg":"Very Good", "Gd":"Good", "Av":"Average"}
         pred_readable = prediction_map.get(model_code, model_code)
 
-        # Enhanced prediction result display
         st.markdown(f"""
         <div class="prediction-card">
             <h2 class="icon-result">Prediction Result</h2>
@@ -340,7 +330,6 @@ if predict_button:
         </div>
         """, unsafe_allow_html=True)
 
-        # Enhanced metrics section
         st.markdown("### Model Evaluation Metrics")
         col1, col2 = st.columns(2)
         
@@ -364,14 +353,12 @@ if predict_button:
             st.markdown("RAE: 0.5373")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # Enhanced feature importance visualization
         st.markdown("### Feature Importance Analysis")
         feature_importances = pd.DataFrame({
             'feature': clf.feature_names_in_,
             'importance': clf.feature_importances_
         }).sort_values(by='importance', ascending=False)
 
-        # Display top features with cards
         st.markdown("#### Top Influential Factors")
         top_features = feature_importances.head(3)
         cols = st.columns(3)
@@ -384,7 +371,6 @@ if predict_button:
                 </div>
                 """, unsafe_allow_html=True)
 
-        # Enhanced bar chart
         fig = px.bar(
             feature_importances,
             x='feature',
@@ -403,7 +389,6 @@ if predict_button:
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        # Additional insights
         st.markdown("### Insights")
         st.info(f"""
         Based on the model analysis:
@@ -412,7 +397,6 @@ if predict_button:
         - This prediction should be used as a guide alongside other educational assessments
         """)
 
-# Welcome message when no prediction has been made
 else:
     st.markdown("""
     <div style="text-align: center; padding: 2.5rem; background-color: rgba(0, 15, 40, 0.85); border-radius: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1);">
@@ -428,7 +412,6 @@ else:
     </div>
     """, unsafe_allow_html=True)
     
-    # Display feature information
     st.markdown("### Features Used for Prediction")
     features = [
         "Gender",
